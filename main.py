@@ -56,6 +56,8 @@ def starting_test(message):
         keyboard.add(types.InlineKeyboardButton(text='Начать опрос!', callback_data='начать опрос'))
         bot.send_message(message.chat.id, text='Спасибо!', reply_markup=keyboard)
     except:
+        cur.close()
+        conn.close()
         keybard = types.InlineKeyboardMarkup(row_width=2)
         btn1 = types.InlineKeyboardButton(text='Да', callback_data='да')
         btn2 = types.InlineKeyboardButton(text='Нет', callback_data='нет')
