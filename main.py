@@ -8,24 +8,25 @@ import os
 load_dotenv()
 token = os.getenv('BOT_TOKEN')
 bot = TeleBot(token=token)
+BAZA = os.getenv('BAZA')
 
-conn = sqlite3.connect('baza.sql')
+conn = sqlite3.connect(BAZA)
 cur = conn.cursor()
 cur.execute('CREATE TABLE IF NOT EXISTS users (id int primary key, name TEXT, age int, answers TEXT)')
 conn.commit()
 cur.close()
 conn.close()
 
-questions = ['Что из перечисленного для вас является самым увлекательным зимним занятием?',
-             'Какое ваше любимое зимнее блюдо?',
-             'Как вы предпочитаете проводить холодные зимние вечера?',
-             'Какое ваше предпочтение в отношении новогодних праздников?',
-             'Какие зимние украшения вам больше нравятся?',
-             'Что для вас является самым красивым зимним пейзажем?',
-             'Какую зимнюю одежду предпочитаете?',
-             'Как вы относитесь к зимним путешествиям?',
-             'Какой ваш любимый зимний праздник?',
-             'Какой фильм озимних каникулах вы предпочитаете:']
+questions = ['Вопрос 1/10 \nЧто из перечисленного для вас является самым увлекательным зимним занятием?',
+             'Вопрос 2/10 \nКакое ваше любимое зимнее блюдо?',
+             'Вопрос 3/10 \nКак вы предпочитаете проводить холодные зимние вечера?',
+             'Вопрос 4/10 \nКакое ваше предпочтение в отношении новогодних праздников?',
+             'Вопрос 5/10 \nКакие зимние украшения вам больше нравятся?',
+             'Вопрос 6/10 \nЧто для вас является самым красивым зимним пейзажем?',
+             'Вопрос 7/10 \nКакую зимнюю одежду предпочитаете?',
+             'Вопрос 8/10 \nКак вы относитесь к зимним путешествиям?',
+             'Вопрос 9/10 \nКакой ваш любимый зимний праздник?',
+             'Вопрос 10/10 \nКакой фильм озимних каникулах вы предпочитаете:']
 answers = [['Катание на лыжах', 'Катание на сноуборде', 'Коньки', 'Снежки'],
            ['Горячий шоколад с зефиром', 'Тёплый суп', 'Пирог с ягодами', 'Блины'],
            ['За чтением книг у камина', 'Смотря кино', 'Играя в настольные игры', 'Собирая пазлы'],
@@ -38,6 +39,8 @@ answers = [['Катание на лыжах', 'Катание на сноубо�
            ['Один дома', 'Хроники Нарнии: Лев, Ведьма и Шкаф', 'Мастер и маргарита', 'Ледниковый период']]
 
 user_answers = ''
+sent = {}
+
 
 @bot.message_handler(commands=['start'])
 def start(message):
@@ -46,7 +49,7 @@ def start(message):
     bot.register_next_step_handler(sent, starting_test)
 def starting_test(message):
     try:
-        conn = sqlite3.connect('baza.sql')
+        conn = sqlite3.connect(BAZA)
         cur = conn.cursor()
         cur.execute('INSERT INTO users (id, name, age) VALUES (?, ?, ?)', (message.chat.id, message.from_user.first_name, message.text))
         conn.commit()
@@ -54,7 +57,7 @@ def starting_test(message):
         conn.close()
         keyboard = types.InlineKeyboardMarkup()
         keyboard.add(types.InlineKeyboardButton(text='Начать опрос!', callback_data='начать опрос'))
-        bot.send_message(message.chat.id, text='Спасибо!', reply_markup=keyboard)
+        sent[message.chat.id] = bot.send_message(message.chat.id, text='Спасибо!', reply_markup=keyboard)
     except:
         cur.close()
         conn.close()
@@ -62,18 +65,18 @@ def starting_test(message):
         btn1 = types.InlineKeyboardButton(text='Да', callback_data='да')
         btn2 = types.InlineKeyboardButton(text='Нет', callback_data='нет')
         keybard.add(btn1, btn2)
-        bot.send_message(message.chat.id, text='Вы уже прошли опрос. Желаете перепройти? (прошлый результат будет удалён!)', reply_markup=keybard)
+        sent[message.chat.id] = bot.send_message(message.chat.id, text='Вы уже прошли опрос. Желаете перепройти? (прошлый результат будет удалён!)', reply_markup=keybard)
 
 
 @bot.callback_query_handler(func=lambda call: call.data == 'нет')
 def cancel(call):
-    bot.send_message(call.message.chat.id, text='Отменено')
+    bot.edit_message_text(chat_id=call.message.chat.id, message_id=sent[call.message.chat.id].message_id, text='Отменено')
 
 
 @bot.callback_query_handler(func=lambda call: call.data in ['начать опрос', 'да'])
 def q1(call):
     if call.data == 'да':
-        conn = sqlite3.connect('baza.sql')
+        conn = sqlite3.connect(BAZA)
         cur = conn.cursor()
         cur.execute('UPDATE users SET answers = ? WHERE id = ?', (None, call.message.chat.id))
         conn.commit()
@@ -85,8 +88,9 @@ def q1(call):
     btn3 = types.InlineKeyboardButton(text=answers[0][2], callback_data='вопрос 2.2')
     btn4 = types.InlineKeyboardButton(text=answers[0][3], callback_data='вопрос 2.3')
     keyboard.add(btn1, btn2, btn3, btn4)
-    bot.send_message(call.message.chat.id, text=questions[0], reply_markup=keyboard)
-
+    sent[call.message.chat.id] = bot.edit_message_text(chat_id=call.message.chat.id,
+                                                       message_id=sent[call.message.chat.id].message_id,
+                                                       text=questions[0], reply_markup=keyboard)
 
 @bot.callback_query_handler(func=lambda call: call.data in ['вопрос 2.0', 'вопрос 2.1', 'вопрос 2.2', 'вопрос 2.3'])
 def q2(call):
@@ -98,7 +102,7 @@ def q2(call):
     btn3 = types.InlineKeyboardButton(text=answers[1][2], callback_data='вопрос 3.2')
     btn4 = types.InlineKeyboardButton(text=answers[1][3], callback_data='вопрос 3.3')
     keyboard.add(btn1, btn2, btn3, btn4)
-    bot.send_message(call.message.chat.id, text=questions[1], reply_markup=keyboard)
+    sent[call.message.chat.id] = bot.edit_message_text(chat_id=call.message.chat.id, message_id=sent[call.message.chat.id].message_id, text=questions[1], reply_markup=keyboard)
 
 
 @bot.callback_query_handler(func=lambda call: call.data in ['вопрос 3.0', 'вопрос 3.1', 'вопрос 3.2', 'вопрос 3.3'])
@@ -111,8 +115,9 @@ def q3(call):
     btn3 = types.InlineKeyboardButton(text=answers[2][2], callback_data='вопрос 4.2')
     btn4 = types.InlineKeyboardButton(text=answers[2][3], callback_data='вопрос 4.3')
     keyboard.add(btn1, btn2, btn3, btn4)
-    bot.send_message(call.message.chat.id, text=questions[2], reply_markup=keyboard)
-
+    sent[call.message.chat.id] = bot.edit_message_text(chat_id=call.message.chat.id,
+                                                       message_id=sent[call.message.chat.id].message_id,
+                                                       text=questions[2], reply_markup=keyboard)
 
 @bot.callback_query_handler(func=lambda call: call.data in ['вопрос 4.0', 'вопрос 4.1', 'вопрос 4.2', 'вопрос 4.3'])
 def q4(call):
@@ -124,8 +129,9 @@ def q4(call):
     btn3 = types.InlineKeyboardButton(text=answers[3][2], callback_data='вопрос 5.2')
     btn4 = types.InlineKeyboardButton(text=answers[3][3], callback_data='вопрос 5.3')
     keyboard.add(btn1, btn2, btn3, btn4)
-    bot.send_message(call.message.chat.id, text=questions[3], reply_markup=keyboard)
-
+    sent[call.message.chat.id] = bot.edit_message_text(chat_id=call.message.chat.id,
+                                                       message_id=sent[call.message.chat.id].message_id,
+                                                       text=questions[3], reply_markup=keyboard)
 
 @bot.callback_query_handler(func=lambda call: call.data in ['вопрос 5.0', 'вопрос 5.1', 'вопрос 5.2', 'вопрос 5.3'])
 def q5(call):
@@ -137,8 +143,9 @@ def q5(call):
     btn3 = types.InlineKeyboardButton(text=answers[4][2], callback_data='вопрос 6.2')
     btn4 = types.InlineKeyboardButton(text=answers[4][3], callback_data='вопрос 6.3')
     keyboard.add(btn1, btn2, btn3, btn4)
-    bot.send_message(call.message.chat.id, text=questions[4], reply_markup=keyboard)
-
+    sent[call.message.chat.id] = bot.edit_message_text(chat_id=call.message.chat.id,
+                                                       message_id=sent[call.message.chat.id].message_id,
+                                                       text=questions[4], reply_markup=keyboard)
 
 @bot.callback_query_handler(func=lambda call: call.data in ['вопрос 6.0', 'вопрос 6.1', 'вопрос 6.2', 'вопрос 6.3'])
 def q6(call):
@@ -150,8 +157,9 @@ def q6(call):
     btn3 = types.InlineKeyboardButton(text=answers[5][2], callback_data='вопрос 7.2')
     btn4 = types.InlineKeyboardButton(text=answers[5][3], callback_data='вопрос 7.3')
     keyboard.add(btn1, btn2, btn3, btn4)
-    bot.send_message(call.message.chat.id, text=questions[5], reply_markup=keyboard)
-
+    sent[call.message.chat.id] = bot.edit_message_text(chat_id=call.message.chat.id,
+                                                       message_id=sent[call.message.chat.id].message_id,
+                                                       text=questions[5], reply_markup=keyboard)
 
 @bot.callback_query_handler(func=lambda call: call.data in ['вопрос 7.0', 'вопрос 7.1', 'вопрос 7.2', 'вопрос 7.3'])
 def q7(call):
@@ -163,8 +171,9 @@ def q7(call):
     btn3 = types.InlineKeyboardButton(text=answers[6][2], callback_data='вопрос 8.2')
     btn4 = types.InlineKeyboardButton(text=answers[6][3], callback_data='вопрос 8.3')
     keyboard.add(btn1, btn2, btn3, btn4)
-    bot.send_message(call.message.chat.id, text=questions[6], reply_markup=keyboard)
-
+    sent[call.message.chat.id] = bot.edit_message_text(chat_id=call.message.chat.id,
+                                                       message_id=sent[call.message.chat.id].message_id,
+                                                       text=questions[6], reply_markup=keyboard)
 
 @bot.callback_query_handler(func=lambda call: call.data in ['вопрос 8.0', 'вопрос 8.1', 'вопрос 8.2', 'вопрос 8.3'])
 def q8(call):
@@ -176,7 +185,9 @@ def q8(call):
     btn3 = types.InlineKeyboardButton(text=answers[7][2], callback_data='вопрос 9.2')
     btn4 = types.InlineKeyboardButton(text=answers[7][3], callback_data='вопрос 9.3')
     keyboard.add(btn1, btn2, btn3, btn4)
-    bot.send_message(call.message.chat.id, text=questions[7], reply_markup=keyboard)
+    sent[call.message.chat.id] = bot.edit_message_text(chat_id=call.message.chat.id,
+                                                       message_id=sent[call.message.chat.id].message_id,
+                                                       text=questions[7], reply_markup=keyboard)
 
 
 @bot.callback_query_handler(func=lambda call: call.data in ['вопрос 9.0', 'вопрос 9.1', 'вопрос 9.2', 'вопрос 9.3'])
@@ -189,8 +200,9 @@ def q9(call):
     btn3 = types.InlineKeyboardButton(text=answers[8][2], callback_data='вопрос 10.2')
     btn4 = types.InlineKeyboardButton(text=answers[8][3], callback_data='вопрос 10.3')
     keyboard.add(btn1, btn2, btn3, btn4)
-    bot.send_message(call.message.chat.id, text=questions[8], reply_markup=keyboard)
-
+    sent[call.message.chat.id] = bot.edit_message_text(chat_id=call.message.chat.id,
+                                                       message_id=sent[call.message.chat.id].message_id,
+                                                       text=questions[8], reply_markup=keyboard)
 
 @bot.callback_query_handler(func=lambda call: call.data in ['вопрос 10.0', 'вопрос 10.1', 'вопрос 10.2', 'вопрос 10.3'])
 def q10(call):
@@ -202,16 +214,19 @@ def q10(call):
     btn3 = types.InlineKeyboardButton(text=answers[9][2], callback_data='2')
     btn4 = types.InlineKeyboardButton(text=answers[9][3], callback_data='3')
     keyboard.add(btn1, btn2, btn3, btn4)
-    bot.send_message(call.message.chat.id, text=questions[9], reply_markup=keyboard)
-
+    sent[call.message.chat.id] = bot.edit_message_text(chat_id=call.message.chat.id,
+                                                       message_id=sent[call.message.chat.id].message_id,
+                                                       text=questions[9], reply_markup=keyboard)
 
 @bot.callback_query_handler(func=lambda call: call.data in ['0', '1', '2', '3'])
 def end(call):
     global user_answers
     user_answers = user_answers + '  \n10. ' + answers[9][int(call.data[-1])]
     user_answers = user_answers[2:]
-    bot.send_message(call.message.chat.id, text='Опрос завершён!')
-    conn = sqlite3.connect('baza.sql')
+    sent[call.message.chat.id] = bot.edit_message_text(chat_id=call.message.chat.id,
+                                                       message_id=sent[call.message.chat.id].message_id,
+                                                       text='Опрос заверешён')
+    conn = sqlite3.connect(BAZA)
     cur = conn.cursor()
     cur.execute('UPDATE users SET answers = ? WHERE id = ?', (user_answers, call.message.chat.id))
     conn.commit()
@@ -222,7 +237,7 @@ def end(call):
 @bot.message_handler(func=lambda message: message.text == 'info')
 @bot.message_handler(commands=['info'])
 def info(message):
-    conn = sqlite3.connect('baza.sql')
+    conn = sqlite3.connect(BAZA)
     cur = conn.cursor()
     cur.execute('SELECT * FROM users')
     users = cur.fetchall()
