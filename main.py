@@ -102,7 +102,9 @@ def q2(call):
     btn3 = types.InlineKeyboardButton(text=answers[1][2], callback_data='вопрос 3.2')
     btn4 = types.InlineKeyboardButton(text=answers[1][3], callback_data='вопрос 3.3')
     keyboard.add(btn1, btn2, btn3, btn4)
-    sent[call.message.chat.id] = bot.edit_message_text(chat_id=call.message.chat.id, message_id=sent[call.message.chat.id].message_id, text=questions[1], reply_markup=keyboard)
+    sent[call.message.chat.id] = bot.edit_message_text(chat_id=call.message.chat.id,
+                                                       message_id=sent[call.message.chat.id].message_id,
+                                                       text=questions[1], reply_markup=keyboard)
 
 
 @bot.callback_query_handler(func=lambda call: call.data in ['вопрос 3.0', 'вопрос 3.1', 'вопрос 3.2', 'вопрос 3.3'])
@@ -244,7 +246,8 @@ def info(message):
     cur.close()
     conn.close()
     for i in users:
-        bot.send_message(message.chat.id, text=f'Ответы пользователя {i[1]} (возраст - {i[2]}): \n{i[3]}')
+        if i[3] != None:пше
+            bot.send_message(message.chat.id, text=f'Ответы пользователя {i[1]} (возраст - {i[2]}): \n{i[3]}')
 
 
 bot.polling()
